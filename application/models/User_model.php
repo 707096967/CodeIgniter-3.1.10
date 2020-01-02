@@ -158,10 +158,10 @@ class User_model extends CI_Model
     }
 
     /**
-     * 根据$token拉取用户信息
-     * @param $Token
+     * 根据 $userId 拉取用户信息
+     * @param $userId
      */
-    function getUserInfo($Token)
+    function getUserInfo($userId)
     {
         $sql = "SELECT
                     u.id,
@@ -174,11 +174,9 @@ class User_model extends CI_Model
                     u.last_login_time,
                     u.status
                 FROM
-                    sys_user_token ut,
                     sys_user u
                 WHERE
-                    ut.token = '" . $Token . "'
-                    AND u.id = ut.user_id";
+                    u.id = ". $userId;
 
         $query = $this->db->query($sql);
         if (($query->row_array()) == null) {
@@ -196,22 +194,20 @@ class User_model extends CI_Model
     }
 
     /**
-     * 根据$token拉取用户角色信息
-     * @param $Token
+     * 根据$userId 拉取用户角色信息
+     * @param $userId
      */
-    function getUserRolesByToken($Token)
+    function getUserRolesByUserId($userId)
     {
         $sql = "SELECT
                     DISTINCT r.id,r.name
                 FROM
-                    sys_user_token ut,
                     sys_user_role ur,
                     sys_role r
                 WHERE
-                    ut.token = '" . $Token . "'
-                    AND ur.user_id = ut.user_id
-                    AND r.id = ur.role_id
-                    and r.status=1";
+                    r.id = ur.role_id
+                    AND r.status=1
+                    AND ur.user_id =" . $userId ;
 
         $query = $this->db->query($sql);
         return $query->result_array();

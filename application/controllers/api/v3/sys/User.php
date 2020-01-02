@@ -451,7 +451,7 @@ class User extends RestController
 
         // 用户名密码正确 生成token 返回
         if ($result['success']) {
-            $Token = $this->_generate_token();
+            // $Token = $this->_generate_token();
             $create_time = time();
             $expire_time = $create_time + 2 * 60 * 60;  // 2小时过期
 
@@ -476,18 +476,43 @@ class User extends RestController
                 'create_time' => $create_time
             ];
 
-            if (!$this->_insert_token($Token, $data)) {
-                $message = [
-                    "code" => 20000,
-                    "message" => 'Token 创建失败, 请联系管理员.'
-                ];
-                $this->response($message, RestController::HTTP_OK);
+            // jwt 生成 token
+            $userInfo = $result['userinfo'];
+            $time = time(); //当前时间
+
+            // 公用信息
+            $payload = [
+                'iat' => $time, //签发时间
+                'nbf' => $time, //(Not Before)：某个时间点后才能访问，比如设置time+30，表示当前时间30秒后才能使用
+                'user_id' => $userInfo['id'], //自定义信息，不要定义敏感信息, 一般只有 userId 或 username
+            ];
+
+            $access_token = $payload;
+            $access_token['scopes'] = 'role_access'; //token标识，请求接口的token
+            $access_token['exp'] = $time + config_item('jwt_access_token_exp'); //access_token过期时间,这里设置2个小时
+
+            $refresh_token = $payload;
+            $refresh_token['scopes'] = 'role_refresh'; //token标识，刷新access_token
+            $refresh_token['exp'] = $time + config_item('jwt_refresh_token_exp'); //refresh_token,这里设置30天
+            $refresh_token['count'] = 0; // 刷新TOKEN计数, 在刷新token期间多次请求刷新token则表示活跃,可以重新生成刷新token以免刷新token过期后登录
+            $Token = JWT::encode($access_token, config_item('jwt_key')); //生成access_tokenToken,
+            $refresh_token = JWT::encode($refresh_token, config_item('jwt_key')); //生成refresh_token,
+
+            // jwt 生成 token end
+
+            if (!$this->_insert_token($Token, $data)) { // 此处不删除 兼容角色切换功能 需要保留 sys_user_token表
+                //                $message = [
+                //                    "code" => 20000,
+                //                    "message" => 'Token 创建失败, 请联系管理员.'
+                //                ];
+                //                $this->response($message, RestController::HTTP_OK);
             }
 
             $message = [
                 "code" => 20000,
                 "data" => [
-                    "token" => $Token
+                    "token" => $Token,
+                    "refresh_token" => $refresh_token
                 ]
             ];
             $this->response($message, RestController::HTTP_OK);
@@ -500,18 +525,85 @@ class User extends RestController
         }
     }
 
+    function refreshtoken_post()
+    {
+        // 此处 $Token 应为refresh token 在前端 request 拦截器中做了修改
+        // 刷新token接口需要在控制器内作权限验证,比较特殊,不能使用hook ManageAuth来验证
+        $Token = $this->input->get_request_header('X-Token', TRUE);
+        try {
+            $decoded = JWT::decode($Token, config_item('jwt_key'), ['HS256']); //HS256方式，这里要和签发的时候对应
+            // $decoded = JWT::decode($Token, config_item('jwt_key'), ['HS256']); //HS256方式，这里要和签发的时候对应
+            //            stdClass Object
+            //            (
+            //                [iat] => 1577668094
+            //                [exp] => 1577668094
+            //                [user_id] => 2
+            //                [count] => 0
+            //            )
+
+            $time = time(); //当前时间
+            // 公用信息
+            $payload = [
+                'iat' => $time, //签发时间
+                'nbf' => $time, //(Not Before)：某个时间点后才能访问，比如设置time+30，表示当前时间30秒后才能使用
+                'user_id' => $decoded->user_id, //自定义信息，不要定义敏感信息, 一般只有 userId 或 username
+            ];
+
+            $access_token = $payload;
+            $access_token['scopes'] = 'role_access'; //token标识，请求接口的token
+            $access_token['exp'] = $time + config_item('jwt_access_token_exp'); //access_token过期时间,这里设置2个小时
+            $new_access_token = JWT::encode($access_token, config_item('jwt_key')); //生成access_tokenToken
+            //        {
+            //          "iat": 1577757920,
+            //          "nbf": 1577757920,
+            //          "user_id": "1",
+            //          "scopes": "role_refresh",
+            //          "exp": 1577758100,
+            //          "count": 0
+            //        }
+
+            $count = $decoded->count + 1;
+            if ($count > config_item('jwt_refresh_count')) { // 在刷新token期间 {多次} 请求刷新token则表示活跃,可以重新生成刷新token以免刷新token过期后登录
+                $refresh_token = $payload;
+                $refresh_token['scopes'] = 'role_refresh'; //token标识，刷新access_token
+                $refresh_token['exp'] = $time + config_item('jwt_refresh_token_exp');
+                $refresh_token['count'] = 0; // 重置刷新TOKEN计数
+                $new_refresh_token = JWT::encode($refresh_token, config_item('jwt_key')); // 这里可以根据需要重新生成 refresh_token
+            } else { // 保持refresh_token过期时间及其他共公用信息,仅自增计数器
+                $decoded->count++;
+                $new_refresh_token = JWT::encode($decoded, config_item('jwt_key'));
+            }
+
+            $message = [
+                "code" => 20000,
+                "data" => [
+                    "token" => $new_access_token,
+                    "refresh_token" => $new_refresh_token
+                ]
+            ];
+            $this->response($message, RestController::HTTP_OK);
+        } catch (\Firebase\JWT\ExpiredException $e) {  // access_token过期
+            $message = [
+                "code" => 50015,
+                "message" => 'refresh_token过期, 请重新登录'
+            ];
+            $this->response($message, RestController::HTTP_UNAUTHORIZED);
+        } catch (Exception $e) {  //其他错误
+            $message = [
+                "code" => 50015,
+                "message" => $e->getMessage()
+            ];
+            $this->response($message, RestController::HTTP_UNAUTHORIZED);
+        }
+    }
+
     // 根据token拉取用户信息 getUserInfo
     function info_get()
     {
-        // $result = $this->some_model(); // 获取用户信息
-        // var_dump($this->get('token'));
-        $result['success'] = TRUE;
-
-        // 真实token
+        // /sys/user/info 不用认证但是需要提取出 access_token 中的 user_id 来拉取用户信息
         $Token = $this->input->get_request_header('X-Token', TRUE);
-        // $this->get('token') // get 参数token
-
-        $result = $this->User_model->getUserInfo($Token);
+        $jwt_obj = $this->permission->parseJWT($Token);
+        $result = $this->User_model->getUserInfo($jwt_obj->user_id);
 
         // 获取用户信息成功
         if ($result['success']) {
@@ -540,7 +632,7 @@ class User extends RestController
             }
 
             // 附加信息
-            $info['roles'] = $this->User_model->getUserRolesByToken($Token);
+            $info['roles'] = $this->User_model->getUserRolesByUserId($jwt_obj->user_id);
             $info['role_id'] = $this->User_model->getCurrentRoleByToken($Token); // 当前选择角色
             $info['introduction'] = "I am a super administrator";
             // $info['avatar'] = "https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif";
@@ -563,12 +655,6 @@ class User extends RestController
             //                    ],
             //                    [
             //                        "path" => "/sys/menu/add"
-            //                    ],
-            //                    [
-            //                        "path" => "/sys/menu/edit"
-            //                    ],
-            //                    [
-            //                        "path" => "/sys/menu/del"
             //                    ],
             //                    [
             //                        "path" => "/sys/menu/download"
