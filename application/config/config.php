@@ -526,10 +526,10 @@ $config['proxy_ips'] = '';
 // JWT 自定义配置
 $config['jwt_key'] = 'pocoyo';
 $config['jwt_access_token_exp'] = 7200; // 单位秒
-$config['jwt_refresh_token_exp'] = 604800; // 单位秒
+$config['jwt_refresh_token_exp'] = 35200; // 单位秒
 $config['jwt_refresh_count'] = 7; // 调用refresh_token接口超过此次数时, 会重置刷新token过期时间
 
-$config['jwt_api_prefix'] = 'api/v2';
+$config['jwt_api_prefix'] = 'api/v3';
 
 // 白名单里的uri不认证
 $config['jwt_white_list'] = [
@@ -541,12 +541,16 @@ $config['jwt_white_list'] = [
     // 参考/sys/user/refreshtoken
     '/sys/user/info',
     '/sys/user/list',
-    '/sys/user/getroleoptions',
+    '/sys/user/roleoptions',
+    '/sys/user/deptoptions',
     '/sys/role/allroles',
     '/sys/role/allmenus',
     '/sys/role/rolemenu',
     '/sys/role/rolerole',
-    '/sys/menu/treeoptions'
+    '/sys/menu/treeoptions',
+    //    '/sys/user/testapi',
+    '/sys/user/verifycode',
+    '/sys/role/saveroleperm'
 ];
 
 // 自定义jwt token 过期或异常返回值,根据前端需要可以分开

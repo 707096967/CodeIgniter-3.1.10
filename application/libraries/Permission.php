@@ -162,11 +162,11 @@ class Permission
         $CI = &get_instance();
         $CI->load->model('Base_model');
         // 50008:非法的token; 50012:其他客户端登录了;  50014:Token 过期了;
-        $tokenArr = $CI->Base_model->TokenExpired($token);
-
-        if ($tokenArr['code'] != 20000) {
-            return $tokenArr;
-        }
+        //        $tokenArr = $CI->Base_model->TokenExpired($token);
+        //
+        //        if ($tokenArr['code'] != 20000) {
+        //            return $tokenArr;
+        //        }
 
         $PermArr = $CI->Base_model->getCtrlPerm($token);
         // getCtrlPerm 返回样例
@@ -183,16 +183,16 @@ class Permission
         //          }
         //        }
         if (empty($PermArr)) {
-            return ['code' => 50016, 'message' => "无操作权限 " . $uri, 'data' => $PermArr];
+            return ['code' => 50016, 'message' => "无操作权限1 " . $uri, 'data' => $PermArr];
         }
-
-        // var_dump($this->uri->uri_string); // string(19) "api/v2/sys/menu/add"
+        //  var_dump($uri); api/v3/sys/menu/view
         foreach ($PermArr as $k => $v) {
+//            var_dump($uri);  var_dump($v['path']);
             if (strpos($uri, $v['path'])) {
                 return ['code' => 50000, 'message' => "有操作权限 " . $uri, 'data' => $PermArr];
             }
         }
-        return ['code' => 50016, 'message' => "无操作权限 " . $uri, 'data' => $PermArr];
+        return ['code' => 50016, 'message' => "无操作权限0 " . $uri, 'data' => $PermArr];
     }
 
     /**

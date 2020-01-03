@@ -14,84 +14,6 @@ class Role extends RestController
         // $this->config->load('config', true);
     }
 
-    public function index_get()
-    {
-        $this->load->view('login_view');
-    }
-
-    public function insertx_post()
-    {
-        // $id = $this->post('id'); // POST param
-        $parms = $this->post();  // 获取表单参数，类型为数组
-        var_dump($parms);
-        $result = $this->Base_model->_insert_key('sys_role_perm', $parms);
-        var_dump($result);
-    }
-
-    public function gettest_post()
-    {
-        $result = $this->Base_model->_get_key('sys_perm', 'perm_type,r_id rid', 'perm_type="role" and r_id=1');
-        var_dump($result);
-        var_dump($result[0]['perm_type']);
-        var_dump($this->uri->uri_string);
-        var_dump($this->uri);
-
-    }
-
-
-    public function testapi_get()
-    {
-        echo "test api ok...";
-
-        echo APPPATH . "\n";
-        echo SELF . "\n";
-        echo BASEPATH . "\n";
-        echo FCPATH . "\n";
-        echo SYSDIR . "\n";
-        var_dump($this->config->item('rest_language'));
-        var_dump($this->config->item('language'));
-
-        var_dump($this->config);
-
-//        $message = [
-//            "code" => 20000,
-//            "data" => [
-//                "__FUNCTION__" =>  __FUNCTION__,
-//                "__CLASS__" => __CLASS__,
-//                "uri" => $this->uri
-//            ],
-//
-//        ];
-//        "data": {
-//            "__FUNCTION__": "router_get",
-//            "__CLASS__": "User",
-//            "uri": {
-//                    "keyval": [],
-//              "uri_string": "api/v2/user/router",
-//              "segments": {
-//                        "1": "api",
-//                "2": "v2",
-//                "3": "user",
-//                "4": "router"
-//              },
-    }
-
-    public function phpinfo_get()
-    {
-        phpinfo();
-    }
-
-    public function testdb_get()
-    {
-        $this->load->database();
-        $query = $this->db->query("show tables");
-        var_dump($query);
-        var_dump($query->result());
-        var_dump($query->row_array());
-//         有结果表明数据库连接正常 reslut() 与 row_array 结果有时不太一样
-//        一般加载到时model里面使用。
-    }
-
     // 增
     function add_post()
     {
@@ -264,13 +186,13 @@ class Role extends RestController
     // 查
     function view_post()
     {
-        $uri = $this->uri->uri_string;
-        $Token = $this->input->get_request_header('X-Token', TRUE);
-
-        $retPerm = $this->permission->HasPermit($Token, $uri);
-        if ($retPerm['code'] != 50000) {
-            $this->response($retPerm, RestController::HTTP_OK);
-        }
+//        $uri = $this->uri->uri_string;
+//        $Token = $this->input->get_request_header('X-Token', TRUE);
+//
+//        $retPerm = $this->permission->HasPermit($Token, $uri);
+//        if ($retPerm['code'] != 50000) {
+//            $this->response($retPerm, RestController::HTTP_OK);
+//        }
 
         $RoleArr = $this->Role_model->getRoleList();
         $message = [
@@ -418,38 +340,4 @@ class Role extends RestController
         ];
         $this->response($message, RestController::HTTP_OK);
     }
-
-
-    function list_get()
-    {
-//        $result = $this->some_model();
-        $result['success'] = TRUE;
-
-        if ($result['success']) {
-            $List = array(
-                array('order_no' => '201805138451313131', 'timestamp' => 'iphone 7 ', 'username' => 'iphone 7 ', 'price' => 399, 'status' => 'success'),
-                array('order_no' => '300000000000000000', 'timestamp' => 'iphone 7 ', 'username' => 'iphone 7 ', 'price' => 399, 'status' => 'pending'),
-                array('order_no' => '444444444444444444', 'timestamp' => 'iphone 7 ', 'username' => 'iphone 7 ', 'price' => 399, 'status' => 'success'),
-                array('order_no' => '888888888888888888', 'timestamp' => 'iphone 7 ', 'username' => 'iphone 7 ', 'price' => 399, 'status' => 'pending'),
-            );
-
-            $message = [
-                "code" => 20000,
-                "data" => [
-                    "total" => count($List),
-                    "items" => $List
-                ]
-            ];
-            $this->response($message, RestController::HTTP_OK);
-        } else {
-            $message = [
-                "code" => 50008,
-                "message" => 'Login failed, unable to get user details.'
-            ];
-
-            $this->response($message, RestController::HTTP_OK);
-        }
-
-    }
-
 }

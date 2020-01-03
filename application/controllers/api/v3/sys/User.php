@@ -1,6 +1,7 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
+use \Firebase\JWT\JWT;
 use chriskacerguis\RestServer\RestController;
 use Gregwar\Captcha\CaptchaBuilder;
 use Gregwar\Captcha\PhraseBuilder;
@@ -126,13 +127,14 @@ class User extends RestController
     // 查
     function view_post()
     {
-        $uri = $this->uri->uri_string;
+//        $uri = $this->uri->uri_string;
+//        $Token = $this->input->get_request_header('X-Token', TRUE);
+//
+//        $retPerm = $this->permission->HasPermit($Token, $uri);
+//        if ($retPerm['code'] != 50000) {
+//            $this->response($retPerm, RestController::HTTP_OK);
+//        }
         $Token = $this->input->get_request_header('X-Token', TRUE);
-
-        $retPerm = $this->permission->HasPermit($Token, $uri);
-        if ($retPerm['code'] != 50000) {
-            $this->response($retPerm, RestController::HTTP_OK);
-        }
 
         $parms = $this->post();
         //  $type = $parms['type'];
@@ -184,12 +186,12 @@ class User extends RestController
     // 增
     function add_post()
     {
-        $uri = $this->uri->uri_string;
-        $Token = $this->input->get_request_header('X-Token', TRUE);
-        $retPerm = $this->permission->HasPermit($Token, $uri);
-        if ($retPerm['code'] != 50000) {
-            $this->response($retPerm, RestController::HTTP_OK);
-        }
+//        $uri = $this->uri->uri_string;
+//        $Token = $this->input->get_request_header('X-Token', TRUE);
+//        $retPerm = $this->permission->HasPermit($Token, $uri);
+//        if ($retPerm['code'] != 50000) {
+//            $this->response($retPerm, RestController::HTTP_OK);
+//        }
 
         $parms = $this->post();  // 获取表单参数，类型为数组
 
@@ -266,12 +268,12 @@ class User extends RestController
     // 改
     function edit_post()
     {
-        $uri = $this->uri->uri_string;
-        $Token = $this->input->get_request_header('X-Token', TRUE);
-        $retPerm = $this->permission->HasPermit($Token, $uri);
-        if ($retPerm['code'] != 50000) {
-            $this->response($retPerm, RestController::HTTP_OK);
-        }
+//        $uri = $this->uri->uri_string;
+//        $Token = $this->input->get_request_header('X-Token', TRUE);
+//        $retPerm = $this->permission->HasPermit($Token, $uri);
+//        if ($retPerm['code'] != 50000) {
+//            $this->response($retPerm, RestController::HTTP_OK);
+//        }
 
         // $id = $this->post('id'); // POST param
         $parms = $this->post();  // 获取表单参数，类型为数组
@@ -388,12 +390,12 @@ class User extends RestController
     // 删
     function del_post()
     {
-        $uri = $this->uri->uri_string;
-        $Token = $this->input->get_request_header('X-Token', TRUE);
-        $retPerm = $this->permission->HasPermit($Token, $uri);
-        if ($retPerm['code'] != 50000) {
-            $this->response($retPerm, RestController::HTTP_OK);
-        }
+//        $uri = $this->uri->uri_string;
+//        $Token = $this->input->get_request_header('X-Token', TRUE);
+//        $retPerm = $this->permission->HasPermit($Token, $uri);
+//        if ($retPerm['code'] != 50000) {
+//            $this->response($retPerm, RestController::HTTP_OK);
+//        }
 
         $parms = $this->post();  // 获取表单参数，类型为数组
         // var_dump($parms['path']);
@@ -464,7 +466,6 @@ class User extends RestController
                 if ($ret['code'] !== '20000') {
                     // 自定义code 未分配角色或角色被删除，用户没有可用角色
                     $this->response($ret, RestController::HTTP_OK);
-
                 }
                 $CurrentRole = $ret['role_id'];
             }
@@ -573,6 +574,15 @@ class User extends RestController
                 $decoded->count++;
                 $new_refresh_token = JWT::encode($decoded, config_item('jwt_key'));
             }
+
+            // 刷新 access_token 时,重新生成 sys_user_token 记录信息
+            $lastLoginRet = $this->User_model->getLastLoginRole($decoded->user_id);
+            $CurrentRole = $lastLoginRet['role_id'];
+            $data = [
+                'user_id' => $decoded->user_id,
+                'role_id' => $CurrentRole
+            ];
+            $this->_insert_token($new_access_token, $data);
 
             $message = [
                 "code" => 20000,
@@ -1223,8 +1233,9 @@ class User extends RestController
         // $appSecret = "fsdfsfsdf";
         // $localAuthUrl = "http://dj.xxx.com:7000/hotcode/";
 
-        if (!array_key_exists("code", $_REQUEST)) {
 
+        if (!array_key_exists("code", $_REQUEST)) {
+            // 根据实际回调地址获取回调 $redirectUri **必须**
             // $redirectUri = urlencode("http://yw.xxx.com/xxx/get-corp-weixin-code.html?redirect_uri=" . urlencode($localAuthUrl));
             $authUrl = "https://open.weixin.qq.com/connect/oauth2/authorize?appid=" . $corpId . "&redirect_uri=" . $redirectUri . "&response_type=code&scope=snsapi_privateinfo&agentid=" . $agentId . "&state=STATE#wechat_redirect";
             echo json_encode(array("success" => false, "authUrl" => $authUrl));
@@ -1319,6 +1330,7 @@ class User extends RestController
     {
         $code = $this->get('code');
 
+        // 需要正确配置企业ID及appSecret, 登录企业微信后台查看
         // $corpId = 'xxxxxx';
         // $appSecret = 'xxxxxx';
 
@@ -1337,16 +1349,7 @@ class User extends RestController
 
         $tokenInfo = $this->http_get($getCorpAccessTokenUrl);
         $tokenInfo = json_decode($tokenInfo["content"], true); // 获取的原始数据解码成json格式，如下
-        //        array(4) {
-        //        ["errcode"]=>
-        //              int(0)
-        //              ["errmsg"]=>
-        //              string(2) "ok"
-        //                    ["access_token"]=>
-        //              string(214) "vP2TgGlg8-_N23PleQnq2q9SBnIfqCkkNMGZ71YoZ8V3R0lB8sJOy15ixco4kOxo8GZMlcgiJHm0hDXzbL6lG2BWleAqmJCrMEPdQj9goZaogVNBICmVrr-Fxz8YCIBUdf36BOq4E-Mt64OCrIUw1254Pxupi9RGOEFoWmMrJKgHnR_F0pjD-hJFZfTOIt7W2VujJq6hsle8SD9qTOZwzA"
-        //                    ["expires_in"]=>
-        //              int(7200)
-        //            }
+
         if ($tokenInfo["errcode"] == 0) {
             $accessToken = $tokenInfo["access_token"];
         } else {
@@ -1361,15 +1364,6 @@ class User extends RestController
         $getUserIdUrl = 'https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo?access_token=' . $accessToken . '&code=' . $code;
         $ajaxUserIdInfo = $this->http_get($getUserIdUrl);
         $userIdInfo = json_decode($ajaxUserIdInfo["content"], true); // 获取的原始数据解码成json格式，如下
-        //        array(4) {
-        //                ["UserId"]=>
-        //                ["DeviceId"]=>
-        //          string(0) ""
-        //                ["errcode"]=>
-        //          int(0)
-        //          ["errmsg"]=>
-        //          string(2) "ok"
-        //        }
 
         if ($userIdInfo["errcode"] == 0) {
             if (array_key_exists("OpenId", $userIdInfo)) {
@@ -1384,40 +1378,9 @@ class User extends RestController
                 $getUserInfoUrl = 'https://qyapi.weixin.qq.com/cgi-bin/user/get?access_token=' . $accessToken . '&userid=' . $userIdInfo["UserId"];
                 $ajaxUserInfo = $this->http_get($getUserInfoUrl);
                 $userInfo = json_decode($ajaxUserInfo["content"], true); // 获取的原始数据解码成json格式，如下
-                //                array(21) {
-                //                    ["errcode"]=>
-                //                      int(0)
-                //                      ["errmsg"]=>
-                //                      string(2) "ok"
-                //                                        ["userid"]=>
-                //                                        ["name"]=>
-                //                      ["position"]=>
-                //                      string(0) ""
-                //                                        ["mobile"]=>
-                //                                        ["gender"]=>
-                //                      string(1) "1"
-                //                                        ["email"]=>
-                //                                        ["avatar"]=>
-                //                      string(85) "http://p.qlogo.cn/bizmail/rZXu0u7ma4vOiaEWia7MTnUDmdDnfgh7R6iafX5832RczKmViadvgbVAhw/"
-                //                                        ["status"]=>
-                //                      int(1)
-                //                    }
 
                 if ($userInfo["errcode"] == 0) {
                     $user = $this->User_model->getUserInfoByTel($userInfo["mobile"]);
-                    //                    array(1) {
-                    //                                            [0]=>
-                    //                      array(12) {
-                    //                                                ["id"]=>
-                    //                        string(1) "1"
-                    //                                                ["username"]=>
-                    //                        string(5) "admin"
-                    //                                                ["tel"]=>
-                    //                                                ["email"]=>
-                    //                        string(17) "lmxdawn@gmail.com"
-                    //
-                    //                      }
-                    //                    }
 
                     if (!empty($user)) {
                         // 成功，生成token 并根据token生成loginfo 并且将信息及 token 返回前台登录
@@ -1492,16 +1455,22 @@ class User extends RestController
         }
     }
 
-    // vux coprauth example
+// vux coprauth example
     function corpauth1_get()
     {
         $code = $this->get('code');
 
+        // 需要正确配置企业ID及appSecret, 登录企业微信后台查看  **必须**
         // $corpId = 'xxxxxx';
+        // $agentId = '1000014';
         // $appSecret = 'xxxxxx';
+        // $localAuthUrl = "http://dj.xxx.com:7001";
+
 
         // code: 60206 微信认证失败统一代码
         if (!$code) {
+            // 根据实际回调地址获取回调 $redirectUri **必须**
+            // $redirectUri = urlencode("http://yw.xxxxx.com/ksh/get-corp-weixin-code.html?redirect_uri=" . urlencode($localAuthUrl));
             $authUrl = "https://open.weixin.qq.com/connect/oauth2/authorize?appid=" . $corpId . "&redirect_uri=" . $redirectUri . "&response_type=code&scope=snsapi_privateinfo&agentid=" . $agentId . "&state=STATE#wechat_redirect";
 
             $message = [
@@ -1598,4 +1567,5 @@ class User extends RestController
             $this->response($message, RestController::HTTP_OK);
         }
     }
+
 }
