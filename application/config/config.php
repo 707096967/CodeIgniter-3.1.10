@@ -536,6 +536,8 @@ $config['jwt_white_list'] = [
     '/sys/user/login',
     '/sys/user/logout',
     '/sys/user/refreshtoken', // 刷新token接口需要在控制器内作权限验证,比较特殊
+    '/sys/user/verifycode',
+    '/sys/user/corpauth', // 企业微信认证免授权
     // 下面接口uri 可以在菜单权限里面添加,再分配给对应角色即可, 方便/安全?
     // 如果不想在前端菜单里添加,也可以直接在后端在控制器里单独做token验证,不用做权限认证
     // 参考/sys/user/refreshtoken
@@ -549,7 +551,6 @@ $config['jwt_white_list'] = [
     '/sys/role/rolerole',
     '/sys/menu/treeoptions',
     //    '/sys/user/testapi',
-    '/sys/user/verifycode',
     '/sys/role/saveroleperm'
 ];
 

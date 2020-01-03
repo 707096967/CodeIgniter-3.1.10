@@ -1384,7 +1384,7 @@ class User extends RestController
 
                     if (!empty($user)) {
                         // 成功，生成token 并根据token生成loginfo 并且将信息及 token 返回前台登录
-                        $Token = $this->_generate_token();
+                        // $Token = $this->_generate_token();
                         $create_time = time();
                         $expire_time = $create_time + 2 * 60 * 60;  // 2小时过期
 
@@ -1408,6 +1408,30 @@ class User extends RestController
                             'create_time' => $create_time
                         ];
 
+                        // jwt 生成 token
+                        $userInfo = $user[0];
+                        $time = time(); //当前时间
+
+                        // 公用信息
+                        $payload = [
+                            'iat' => $time, //签发时间
+                            'nbf' => $time, //(Not Before)：某个时间点后才能访问，比如设置time+30，表示当前时间30秒后才能使用
+                            'user_id' => $userInfo['id'], //自定义信息，不要定义敏感信息, 一般只有 userId 或 username
+                        ];
+
+                        $access_token = $payload;
+                        $access_token['scopes'] = 'role_access'; //token标识，请求接口的token
+                        $access_token['exp'] = $time + config_item('jwt_access_token_exp'); //access_token过期时间,这里设置2个小时
+
+                        $refresh_token = $payload;
+                        $refresh_token['scopes'] = 'role_refresh'; //token标识，刷新access_token
+                        $refresh_token['exp'] = $time + config_item('jwt_refresh_token_exp'); //refresh_token,这里设置30天
+                        $refresh_token['count'] = 0; // 刷新TOKEN计数, 在刷新token期间多次请求刷新token则表示活跃,可以重新生成刷新token以免刷新token过期后登录
+                        $Token = JWT::encode($access_token, config_item('jwt_key')); //生成access_tokenToken,
+                        $refresh_token = JWT::encode($refresh_token, config_item('jwt_key')); //生成refresh_token,
+
+                        // jwt 生成 token end
+
                         // TODO: 考虑sys_user_token 表加入类型字段判断是微信登录生成 token 还是账号密码登录生成 token
                         if (!$this->_insert_token($Token, $data)) {
                             $message = [
@@ -1422,7 +1446,8 @@ class User extends RestController
                             "code" => 20000,
                             "data" => [
                                 "status" => 'ok',
-                                "token" => $Token
+                                "token" => $Token,
+                                "refresh_token" => $refresh_token
                             ]
                         ];
                         $this->response($message, RestController::HTTP_OK);
