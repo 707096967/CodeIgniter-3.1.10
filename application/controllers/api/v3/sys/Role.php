@@ -17,12 +17,12 @@ class Role extends RestController
     // 增
     function add_post()
     {
-        $uri = $this->uri->uri_string;
-        $Token = $this->input->get_request_header('X-Token', TRUE);
-        $retPerm = $this->permission->HasPermit($Token, $uri);
-        if ($retPerm['code'] != 50000) {
-            $this->response($retPerm, RestController::HTTP_OK);
-        }
+//        $uri = $this->uri->uri_string;
+//        $Token = $this->input->get_request_header('X-Token', TRUE);
+//        $retPerm = $this->permission->HasPermit($Token, $uri);
+//        if ($retPerm['code'] != 50000) {
+//            $this->response($retPerm, RestController::HTTP_OK);
+//        }
 
         $parms = $this->post();  // 获取表单参数，类型为数组
 
@@ -75,12 +75,12 @@ class Role extends RestController
     // 改
     function edit_post()
     {
-        $uri = $this->uri->uri_string;
-        $Token = $this->input->get_request_header('X-Token', TRUE);
-        $retPerm = $this->permission->HasPermit($Token, $uri);
-        if ($retPerm['code'] != 50000) {
-            $this->response($retPerm, RestController::HTTP_OK);
-        }
+//        $uri = $this->uri->uri_string;
+//        $Token = $this->input->get_request_header('X-Token', TRUE);
+//        $retPerm = $this->permission->HasPermit($Token, $uri);
+//        if ($retPerm['code'] != 50000) {
+//            $this->response($retPerm, RestController::HTTP_OK);
+//        }
 
         // $id = $this->post('id'); // POST param
         $parms = $this->post();  // 获取表单参数，类型为数组
@@ -124,12 +124,12 @@ class Role extends RestController
     // 删
     function del_post()
     {
-        $uri = $this->uri->uri_string;
-        $Token = $this->input->get_request_header('X-Token', TRUE);
-        $retPerm = $this->permission->HasPermit($Token, $uri);
-        if ($retPerm['code'] != 50000) {
-            $this->response($retPerm, RestController::HTTP_OK);
-        }
+//        $uri = $this->uri->uri_string;
+//        $Token = $this->input->get_request_header('X-Token', TRUE);
+//        $retPerm = $this->permission->HasPermit($Token, $uri);
+//        if ($retPerm['code'] != 50000) {
+//            $this->response($retPerm, RestController::HTTP_OK);
+//        }
 
         $parms = $this->post();  // 获取表单参数，类型为数组
         // var_dump($parms['path']);
